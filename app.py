@@ -2,6 +2,18 @@ import streamlit as st
 from main import run_live_analysis # Your File 6 logic
 from Services.config_loader import get_config
 import re
+from Services.portfolio import get_public_holdings
+
+with st.sidebar:
+    st.title("My Live Portfolio 📈")
+    if st.button("Sync Public.com Portfolio"):
+        my_stocks = get_public_holdings()
+        if my_stocks:
+            st.write("You currently hold:")
+            for stock in my_stocks:
+                st.code(stock)
+        else:
+            st.error("Could not sync portfolio. Check your API Key.")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
