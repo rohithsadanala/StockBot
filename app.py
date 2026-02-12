@@ -3,54 +3,65 @@ from main import run_live_analysis # Your File 6 logic
 from Services.config_loader import get_config
 from Services.portfolio import get_detailed_portfolio
 import re
-import requests
 
-def get_detailed_portfolio():
-    secret_key = st.secrets["PUBLIC_API_KEY"]
+portfolio = get_detailed_portfolio()
 
-    # 1. Get Access Token
-    auth_url = "https://api.public.com/userapiauthservice/personal/access-tokens"
-    auth_res = requests.post(auth_url, json={"validityInMinutes": 60, "secret": secret_key})
-    token = auth_res.json().get("accessToken")
+if portfolio:
+    st.sidebar.metric("Total Equity", f"${portfolio['total_equity']:,.2f}")
+    st.sidebar.metric("Cash Balance", f"${portfolio['cash']}")
 
-    # 2. Get Portfolio (Using your account ID)
-    account_id = "5OS80995"
-    url = f"https://api.public.com/userapigateway/trading/accounts/{account_id}/portfolio/v2"
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    st.sidebar.subheader("My Positions")
+    for stock in portfolio['stocks']:
+        # Use a green/red color based on gain
+        color = "green" if float(stock['gain_pct']) >= 0 else "red"
+        st.sidebar.markdown(f"**{stock['ticker']}**: {stock['shares']} shares | :{color}[{stock['gain_pct']}%]")
 
-    try:
-        response = requests.get(url, headers=headers)
-        data = response.json()
+with st.sidebar:
+    st.title("My Live Portfolio 📈")
+    if st.button("Sync Public.com Portfolio"):
+        my_stocks = get_detailed_portfolio()
+        if my_stocks:
+            st.write("You currently hold:")
+            for stock in my_stocks:
+                st.code(stock)
+        else:
+            st.error("Could not sync portfolio. Check your API Key.")
 
-        # --- DEBUG: See the real structure in Streamlit if it fails ---
-        # st.write(data) # Uncomment this line if you want to see the full JSON on screen
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-        # 3. Parse Safely
-        # We use .get() so it returns 0 instead of crashing if 'buyingPower' is missing
-        bp_data = data.get('buyingPower', {})
-        cash = bp_data.get('cashOnlyBuyingPower', "0.00")
 
-        # Calculate Total Equity from the equity list
-        equity_list = data.get('equity', [])
-        total_value = sum(float(e.get('value', 0)) for e in equity_list)
+st.set_page_config(page_title="AI Stock Assistant", page_icon="📈")
 
-        summary = {
-            "cash": cash,
-            "total_equity": total_value,
-            "stocks": []
-        }
 
-        # 4. Extract Positions
-        for p in data.get('positions', []):
-            instr = p.get('instrument', {})
-            summary['stocks'].append({
-                "ticker": instr.get('symbol', 'Unknown'),
-                "shares": p.get('quantity', '0'),
-                "gain_pct": p.get('instrumentGain', {}).get('gainPercentage', '0')
-            })
+if prompt := st.chat_input("Ask about a stock (e.g., 'Should I buy AAPL?')"):
+    # 1. Display user message
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
 
-        return summary
+    # 2. Logic: Extract ticker if mentioned (Simple version for learning)
+    # We look for uppercase words like AAPL or TSLA
+    import re
 
-    except Exception as e:
-        st.error(f"Detailed Parsing Error: {e}")
-        return None
+    tickers = re.findall(r'[A-Z]{2,5}', prompt)
+
+    with st.chat_message("assistant"):
+        if tickers:
+            target = tickers[0]
+            with st.spinner(f"Analyzing {target} for you..."):
+                # Use your existing logic chain!
+                from Services.market_public_yahoo import get_stock_price
+                from Services.market_news import get_company_news
+                from brain import get_ai_decision
+
+                price_data = get_stock_price(target)
+                news_data = get_company_news(target)
+                ai_response = get_ai_decision(target, price_data['current_price'], news_data)
+
+                full_response = f"**Analysis for {target}:**\n\n{ai_response}"
+        else:
+            full_response = "I'm ready! Please mention a stock ticker in all caps (e.g., 'Tell me about GOOGL')."
+
+        st.markdown(full_response)
+        st.session_state.messages.append({"role": "assistant", "content": full_response})
