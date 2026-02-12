@@ -1,0 +1,7 @@
+FastAPI
+Pandas
+Yfinance
+python - dotenv
+requests
+langchain
+streamlit
