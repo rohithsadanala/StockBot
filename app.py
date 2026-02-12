@@ -1,10 +1,8 @@
 import streamlit as st
 from main import run_live_analysis # Your File 6 logic
 from Services.config_loader import get_config
-import re
 from Services.portfolio import get_detailed_portfolio
-
-
+import re
 
 portfolio = get_detailed_portfolio()
 
