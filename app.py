@@ -1,8 +1,14 @@
 import streamlit as st
 from main import run_live_analysis # Your File 6 logic
 from Services.config_loader import get_config
+import re
 
-# ... (Keep your previous imports and session state code) ...
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+
+st.set_page_config(page_title="AI Stock Assistant", page_icon="📈")
+
 
 if prompt := st.chat_input("Ask about a stock (e.g., 'Should I buy AAPL?')"):
     # 1. Display user message
