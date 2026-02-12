@@ -2,51 +2,40 @@ import requests
 import streamlit as st
 
 
-def get_public_holdings():
-    # 1. Pull the Secret from your Streamlit Secrets
-    my_secret = st.secrets["PUBLIC_API_KEY"]
+def get_detailed_portfolio():
+    secret_key = st.secrets["PUBLIC_API_KEY"]
 
-    # --- STEP 1: Exchange Secret for Token (POST) ---
+    # 1. Get Access Token (Standard POST flow we verified)
     auth_url = "https://api.public.com/userapiauthservice/personal/access-tokens"
-    auth_headers = {"Content-Type": "application/json"}
-    auth_body = {
-        "validityInMinutes": 123,  # Using the value from your example
-        "secret": my_secret
-    }
+    auth_res = requests.post(auth_url, json={"validityInMinutes": 60, "secret": secret_key})
+    token = auth_res.json().get("accessToken")
+
+    # 2. Get Portfolio V2 (Using your specific account ID from the JSON)
+    # Note: In production, we'd fetch the ID dynamically, but let's use yours for now.
+    account_id = "5OS80995"
+    url = f"https://api.public.com/userapigateway/trading/accounts/{account_id}/portfolio/v2"
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
     try:
-        auth_response = requests.post(auth_url, headers=auth_headers, json=auth_body)
+        response = requests.get(url, headers=headers)
+        data = response.json()
 
-        # If the server returned 200, we proceed to parse the JSON
-        if auth_response.status_code == 200:
-            token_data = auth_response.json()
-            access_token = token_data.get("accessToken")
+        # 3. Parse the data into a clean dictionary
+        summary = {
+            "cash": data['buyingPower']['cashOnlyBuyingPower'],
+            "total_equity": sum(float(e['value']) for e in data['equity']),
+            "stocks": []
+        }
 
-            if not access_token:
-                st.error("Received an empty Access Token. Check your Public.com dashboard.")
-                return []
+        for p in data.get('positions', []):
+            summary['stocks'].append({
+                "ticker": p['instrument']['symbol'],
+                "shares": p['quantity'],
+                "value": p['current_value' if 'current_value' in p else 'currentValue'],
+                "gain_pct": p['instrumentGain']['gainPercentage']
+            })
 
-            # --- STEP 2: Fetch Portfolio (GET) ---
-            # We use the token from Step 1 in the headers
-            portfolio_url = "https://api.public.com/v1/portfolios"
-            portfolio_headers = {
-                "Authorization": f"Bearer {access_token}",
-                "Accept": "application/json"
-            }
-
-            port_response = requests.get(portfolio_url, headers=portfolio_headers)
-
-            if port_response.status_code == 200:
-                data = port_response.json()
-                # Extract symbols from the list of holdings
-                return [item['symbol'] for item in data.get('items', [])]
-            else:
-                st.error(f"Portfolio Fetch Failed: {port_response.status_code}")
-                return []
-        else:
-            st.error(f"Auth Error {auth_response.status_code}: {auth_response.text}")
-            return []
-
+        return summary
     except Exception as e:
-        st.error(f"System Error: {e}")
-        return []
+        st.error(f"Parsing Error: {e}")
+        return None

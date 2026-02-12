@@ -2,12 +2,26 @@ import streamlit as st
 from main import run_live_analysis # Your File 6 logic
 from Services.config_loader import get_config
 import re
-from Services.portfolio import get_public_holdings
+from Services.portfolio import get_detailed_portfolio
+
+
+
+portfolio = get_detailed_portfolio()
+
+if portfolio:
+    st.sidebar.metric("Total Equity", f"${portfolio['total_equity']:,.2f}")
+    st.sidebar.metric("Cash Balance", f"${portfolio['cash']}")
+
+    st.sidebar.subheader("My Positions")
+    for stock in portfolio['stocks']:
+        # Use a green/red color based on gain
+        color = "green" if float(stock['gain_pct']) >= 0 else "red"
+        st.sidebar.markdown(f"**{stock['ticker']}**: {stock['shares']} shares | :{color}[{stock['gain_pct']}%]")
 
 with st.sidebar:
     st.title("My Live Portfolio 📈")
     if st.button("Sync Public.com Portfolio"):
-        my_stocks = get_public_holdings()
+        my_stocks = get_detailed_portfolio()
         if my_stocks:
             st.write("You currently hold:")
             for stock in my_stocks:
