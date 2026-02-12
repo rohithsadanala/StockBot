@@ -1,7 +1,8 @@
-FastAPI
-Pandas
-Yfinance
-python - dotenv
+fastapi
+pandas
+yfinance
+python-dotenv
 requests
 langchain
 streamlit
+langchain-google-genai
