@@ -12,6 +12,7 @@ def get_detailed_portfolio():
         token = auth_res.json().get("accessToken")
 
         # 2. Get Portfolio V2
+        # Using your confirmed Account ID
         account_id = "5OS80995"
         url = f"https://api.public.com/userapigateway/trading/accounts/{account_id}/portfolio/v2"
         headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
@@ -19,17 +20,14 @@ def get_detailed_portfolio():
         response = requests.get(url, headers=headers)
         data = response.json()
 
-        # --- THE DEBUGGER ---
-        # If you see an error, uncomment the line below to see the raw JSON on your website
-        # st.write("RAW DATA:", data)
+        # 3. Flexible Parsing (Defensive Programming)
+        # We check for the key, and if it's missing, we provide a default empty dictionary {}
+        bp_data = data.get('buyingPower', {})
+        cash = bp_data.get('cashOnlyBuyingPower', "0.00")
 
-        # 3. Flexible Parsing (Handles both camelCase and snake_case)
-        # We look for the data in multiple possible keys
-        bp = data.get('buyingPower') or data.get('buying_power') or {}
-        cash = bp.get('cashOnlyBuyingPower') or bp.get('cash_only_buying_power') or "0.00"
-
-        equity_data = data.get('equity') or data.get('equity_summary') or []
-        total_value = sum(float(e.get('value', 0)) for e in equity_data) if isinstance(equity_data, list) else 0
+        # Calculate Total Equity safely
+        equity_list = data.get('equity', [])
+        total_value = sum(float(e.get('value', 0)) for e in equity_list)
 
         summary = {
             "cash": cash,
@@ -40,16 +38,19 @@ def get_detailed_portfolio():
         # 4. Extract Positions safely
         for p in data.get('positions', []):
             instr = p.get('instrument', {})
-            gain_data = p.get('instrumentGain') or p.get('instrument_gain') or {}
+            gain_data = p.get('instrumentGain', {})
 
             summary['stocks'].append({
                 "ticker": instr.get('symbol', 'Unknown'),
+                "name": instr.get('name', ''),
                 "shares": p.get('quantity', '0'),
-                "gain_pct": gain_data.get('gainPercentage') or gain_data.get('gain_percentage') or "0"
+                "value": p.get('currentValue', '0.00'),
+                "gain_pct": gain_data.get('gainPercentage', '0')
             })
 
         return summary
 
     except Exception as e:
-        st.error(f"Logic Error: {e}")
+        # This will now tell us the EXACT line that failed
+        st.error(f"Logic Error in Portfolio Sync: {e}")
         return None
