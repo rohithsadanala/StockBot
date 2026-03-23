@@ -1,7 +1,21 @@
-# StockBot
+# StockBot 📈
 
-An AI-powered dashboard that tracks your Public.com portfolio and analyzes stocks using Google Gemini.
+An AI-powered assistant for analyzing stock-related data and generating insights.
 
+## 💡 Overview
+Automates financial data analysis using AI and rule-based logic.
+
+## 🧠 Features
+- Market data analysis
+- AI-based insight generation
+- Automated decision support
+- API-based architecture
+
+## ⚙️ Tech Stack
+Python, APIs, LLMs, Data Processing
+
+## 🔥 Why it matters
+Shows AI applied to financial automation and decision systems.
 ## Features
 - **Portfolio Sync:** Pulls live holdings and cash balance from Public.com.
 - **AI Chat:** Get sentiment analysis on any stock ticker.
